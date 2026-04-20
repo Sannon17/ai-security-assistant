@@ -1,4 +1,5 @@
 import os
+import sys
 from groq import Groq
 from dotenv import load_dotenv
 from datetime import datetime
@@ -7,11 +8,22 @@ load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# Read the log file
-with open("sample.log", "r") as f:
+# Accept any log file as input
+if len(sys.argv) < 2:
+    print("Usage: python3 chat.py <logfile>")
+    print("Example: python3 chat.py sample.log")
+    sys.exit(1)
+
+log_file = sys.argv[1]
+
+if not os.path.exists(log_file):
+    print(f"Error: File '{log_file}' not found.")
+    sys.exit(1)
+
+with open(log_file, "r") as f:
     log_content = f.read()
 
-print("Analysing logs...\n")
+print(f"Analysing {log_file}...\n")
 
 response = client.chat.completions.create(
     model="llama-3.3-70b-versatile",
@@ -46,6 +58,7 @@ filename = f"report_{timestamp}.txt"
 
 with open(filename, "w") as f:
     f.write(f"AI THREAT ANALYSIS REPORT\n")
+    f.write(f"Log File Analysed: {log_file}\n")
     f.write(f"Generated: {timestamp}\n")
     f.write(f"{'='*40}\n\n")
     f.write(report)
