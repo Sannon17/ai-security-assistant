@@ -1,0 +1,28 @@
+2026-04-20 03:14:22 - Event ID: 1 - ProcessCreate
+  Image: C:\Windows\System32\cmd.exe
+  ParentImage: C:\Windows\System32\services.exe
+  CommandLine: cmd.exe /c powershell.exe -nop -w hidden -enc SQBFAFgA
+  User: SYSTEM
+  IntegrityLevel: System
+
+2026-04-20 03:14:25 - Event ID: 1 - ProcessCreate
+  Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+  ParentImage: C:\Windows\System32\cmd.exe
+  CommandLine: powershell.exe -nop -w hidden -enc SQBFAFgA
+  User: SYSTEM
+  IntegrityLevel: System
+
+2026-04-20 03:14:31 - Event ID: 13 - RegistryValueSet
+  TargetObject: HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\updater
+  Details: C:\Users\Public\updater.exe
+  Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+2026-04-20 03:14:45 - Event ID: 11 - FileCreate
+  TargetFilename: C:\Users\Public\updater.exe
+  Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+2026-04-20 03:15:02 - Event ID: 3 - NetworkConnect
+  Image: C:\Users\Public\updater.exe
+  DestinationIp: 185.220.101.45
+  DestinationPort: 4444
+  User: SYSTEM
