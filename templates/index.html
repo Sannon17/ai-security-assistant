@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Security Log Analyser</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0a0e1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #0d1117;
+            border-bottom: 1px solid #1e3a5f;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            color: #58a6ff;
+            font-weight: 600;
+        }
+
+        header span {
+            font-size: 0.85rem;
+            color: #8b949e;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .upload-card {
+            background: #0d1117;
+            border: 1px solid #1e3a5f;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-card h2 {
+            color: #58a6ff;
+            margin-bottom: 8px;
+            font-size: 1.2rem;
+        }
+
+        .upload-card p {
+            color: #8b949e;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+
+        .upload-area {
+            border: 2px dashed #1e3a5f;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: #58a6ff;
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        .upload-area label {
+            cursor: pointer;
+            color: #58a6ff;
+            font-size: 0.95rem;
+        }
+
+        .upload-area .filename {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #8b949e;
+        }
+
+        button {
+            background: #1f6feb;
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        button:hover { background: #388bfd; }
+        button:disabled {
+            background: #1e3a5f;
+            cursor: not-allowed;
+            color: #8b949e;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #58a6ff;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #1e3a5f;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .report { display: none; }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .severity-Critical { background: #3d0000; color: #ff4444; border: 1px solid #ff4444; }
+        .severity-High     { background: #2d1a00; color: #ff8c00; border: 1px solid #ff8c00; }
+        .severity-Medium   { background: #2d2a00; color: #ffd700; border: 1px solid #ffd700; }
+        .severity-Low      { background: #002d1a; color: #00c853; border: 1px solid #00c853; }
+
+        .report-header {
+            background: #0d1117;
+            border: 1px solid #1e3a5f;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .report-header .meta { color: #8b949e; font-size: 0.85rem; }
+        .report-header .meta span { color: #e0e0e0; }
+
+        .card {
+            background: #0d1117;
+            border: 1px solid #1e3a5f;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card h3 {
+            color: #58a6ff;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #1e3a5f;
+        }
+
+        .card p { color: #c9d1d9; line-height: 1.7; }
+
+        .mitre-item {
+            background: #0a0e1a;
+            border: 1px solid #1e3a5f;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+
+        .mitre-item .top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .mitre-id {
+            background: #1f6feb;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        .mitre-name { font-weight: 600; color: #e0e0e0; }
+
+        .mitre-tactic {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: #8b949e;
+            background: #161b22;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .mitre-desc { color: #8b949e; font-size: 0.85rem; }
+
+        .ioc-item {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #ff8c00;
+            background: #0a0e1a;
+            border: 1px solid #2d1a00;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+        }
+
+        .action-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .action-num {
+            background: #1f6feb;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .action-text { color: #c9d1d9; line-height: 1.5; }
+
+        .notes-text {
+            color: #8b949e;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            font-style: italic;
+        }
+
+        .error {
+            background: #3d0000;
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            padding: 16px;
+            color: #ff4444;
+            margin-top: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    <h1>AI Security Log Analyser</h1>
+    <span>Powered by LLaMA 3.3 + MITRE ATT&CK</span>
+</header>
+
+<div class="container">
+    <div class="upload-card">
+        <h2>Upload Security Log</h2>
+        <p>Supports Sysmon, Windows Event, and custom log formats</p>
+
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept=".log,.txt,.csv" onchange="updateFilename(this)">
+            <label>📁 Click to select a log file</label>
+            <div class="filename" id="filename">No file selected</div>
+        </div>
+
+        <button id="analyseBtn" onclick="analyseLogs()" disabled>
+            🔍 Analyse Logs
+        </button>
+
+        <div class="error" id="errorBox"></div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analysing logs with AI...</p>
+        <p style="font-size:0.8rem; color:#8b949e; margin-top:8px">
+            Identifying MITRE ATT&CK techniques
+        </p>
+    </div>
+
+    <div class="report" id="report">
+        <div class="report-header">
+            <div>
+                <div class="meta">Log File: <span id="r-file"></span></div>
+                <div class="meta" style="margin-top:4px">
+                    Generated: <span id="r-time"></span>
+                </div>
+            </div>
+            <div id="r-severity"></div>
+        </div>
+
+        <div class="card">
+            <h3>📋 Summary</h3>
+            <p id="r-summary"></p>
+        </div>
+
+        <div class="card">
+            <h3>🎯 MITRE ATT&CK Techniques</h3>
+            <div id="r-mitre"></div>
+        </div>
+
+        <div class="card">
+            <h3>🔍 Indicators of Compromise</h3>
+            <div id="r-iocs"></div>
+        </div>
+
+        <div class="card">
+            <h3>⚡ Immediate Actions</h3>
+            <div id="r-actions"></div>
+        </div>
+
+        <div class="card">
+            <h3>📝 Analyst Notes</h3>
+            <p class="notes-text" id="r-notes"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateFilename(input) {
+        const filename = input.files[0]?.name || 'No file selected';
+        document.getElementById('filename').textContent = filename;
+        document.getElementById('analyseBtn').disabled = !input.files[0];
+    }
+
+    async function analyseLogs() {
+        const file = document.getElementById('fileInput').files[0];
+        if (!file) return;
+
+        // Show loading
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('report').style.display = 'none';
+        document.getElementById('errorBox').style.display = 'none';
+        document.getElementById('analyseBtn').disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/analyse', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            renderReport(data);
+
+        } catch (err) {
+            document.getElementById('errorBox').textContent = 
+                'Error: ' + err.message;
+            document.getElementById('errorBox').style.display = 'block';
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('analyseBtn').disabled = false;
+        }
+    }
+
+    function renderReport(data) {
+        document.getElementById('r-file').textContent = data.log_file;
+        document.getElementById('r-time').textContent = data.generated_at;
+
+        // Severity badge
+        const sev = data.severity;
+        document.getElementById('r-severity').innerHTML = 
+            `<span class="severity-badge severity-${sev}">${sev}</span>`;
+
+        document.getElementById('r-summary').textContent = data.summary;
+
+        // MITRE techniques
+        const mitreHtml = data.mitre_techniques.map(t => `
+            <div class="mitre-item">
+                <div class="top">
+                    <span class="mitre-id">${t.id}</span>
+                    <span class="mitre-name">${t.name}</span>
+                    <span class="mitre-tactic">${t.tactic}</span>
+                </div>
+                <div class="mitre-desc">${t.description}</div>
+            </div>
+        `).join('');
+        document.getElementById('r-mitre').innerHTML = mitreHtml;
+
+        // IOCs
+        const iocHtml = data.indicators_of_compromise.map(ioc => 
+            `<div class="ioc-item">${ioc}</div>`
+        ).join('');
+        document.getElementById('r-iocs').innerHTML = iocHtml;
+
+        // Actions
+        const actionsHtml = data.immediate_actions.map((a, i) => `
+            <div class="action-item">
+                <div class="action-num">${i+1}</div>
+                <div class="action-text">${a}</div>
+            </div>
+        `).join('');
+        document.getElementById('r-actions').innerHTML = actionsHtml;
+
+        document.getElementById('r-notes').textContent = data.analyst_notes;
+
+        document.getElementById('report').style.display = 'block';
+        document.getElementById('report').scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+
+</body>
+</html>
