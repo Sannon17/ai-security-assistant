@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from groq import Groq
 from dotenv import load_dotenv
 from datetime import datetime
@@ -30,37 +31,81 @@ response = client.chat.completions.create(
     messages=[
         {
             "role": "system",
-            "content": """You are an expert SOC analyst and incident responder. 
-            When given security logs, you:
-            1. Summarise what happened in plain English
-            2. List every MITRE ATT&CK technique you identify with the TTP ID
-            3. Rate the severity (Low / Medium / High / Critical)
-            4. List the top 3 immediate actions the analyst should take
-            Keep your response structured and concise."""
+            "content": """You are an expert SOC analyst and incident responder.
+            Analyse the provided security logs and respond ONLY with a JSON object.
+            No extra text, no markdown, no explanation — just the raw JSON.
+            
+            Use exactly this structure:
+            {
+                "summary": "Plain English summary of what happened",
+                "severity": "Critical | High | Medium | Low",
+                "mitre_techniques": [
+                    {
+                        "id": "T1059.001",
+                        "name": "PowerShell",
+                        "tactic": "Execution",
+                        "description": "Why this technique was identified"
+                    }
+                ],
+                "indicators_of_compromise": [
+                    "List of specific IOCs found: IPs, file paths, registry keys, commands"
+                ],
+                "immediate_actions": [
+                    "Action 1",
+                    "Action 2", 
+                    "Action 3"
+                ],
+                "analyst_notes": "Any additional context or recommendations"
+            }"""
         },
         {
             "role": "user",
-            "content": f"Analyse these security logs and provide a threat report:\n\n{log_content}"
+            "content": f"Analyse these security logs:\n\n{log_content}"
         }
     ]
 )
 
-report = response.choices[0].message.content
+raw = response.choices[0].message.content
 
-# Print to screen
+# Parse the JSON
+try:
+    report_data = json.loads(raw)
+except json.JSONDecodeError:
+    # Sometimes AI adds markdown backticks - strip them
+    clean = raw.replace("```json", "").replace("```", "").strip()
+    report_data = json.loads(clean)
+
+# Add metadata
+report_data["log_file"] = log_file
+report_data["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+# Print formatted report to screen
 print("=== AI THREAT ANALYSIS REPORT ===\n")
-print(report)
-print("\n=== END OF REPORT ===")
+print(f"📁 Log File:  {report_data['log_file']}")
+print(f"🕐 Generated: {report_data['generated_at']}")
+print(f"🚨 Severity:  {report_data['severity']}")
+print(f"\n📋 SUMMARY:\n{report_data['summary']}")
 
-# Save to file automatically
+print(f"\n🎯 MITRE ATT&CK TECHNIQUES ({len(report_data['mitre_techniques'])} identified):")
+for t in report_data['mitre_techniques']:
+    print(f"  • {t['id']} — {t['name']} [{t['tactic']}]")
+    print(f"    {t['description']}")
+
+print(f"\n🔍 INDICATORS OF COMPROMISE:")
+for ioc in report_data['indicators_of_compromise']:
+    print(f"  • {ioc}")
+
+print(f"\n⚡ IMMEDIATE ACTIONS:")
+for i, action in enumerate(report_data['immediate_actions'], 1):
+    print(f"  {i}. {action}")
+
+print(f"\n📝 ANALYST NOTES:\n{report_data['analyst_notes']}")
+
+# Save JSON report
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-filename = f"report_{timestamp}.txt"
+json_filename = f"report_{timestamp}.json"
+with open(json_filename, "w") as f:
+    json.dump(report_data, f, indent=2)
 
-with open(filename, "w") as f:
-    f.write(f"AI THREAT ANALYSIS REPORT\n")
-    f.write(f"Log File Analysed: {log_file}\n")
-    f.write(f"Generated: {timestamp}\n")
-    f.write(f"{'='*40}\n\n")
-    f.write(report)
-
-print(f"\n✅ Report saved to: {filename}")
+print(f"\n✅ JSON report saved to: {json_filename}")
+print("=== END OF REPORT ===")
